@@ -539,9 +539,27 @@ dim(training)
 > 
 
 #I removed all the NAs because we need to clean the data little bit. 
-#for correlation best is magnet arm and pitch_forearm
+maxNAPerc = 20
+maxNACount <- nrow(training.raw) / 100 * maxNAPerc
+removeColumns <- which(colSums(is.na(training.raw) | training.raw=="") > maxNACount)
+training.cleaned01 <- training.raw[,-removeColumns]
+testing.cleaned01 <- testing.raw[,-removeColumns]
+
+## Exploratory part 
+
+#for correlation 
+
+#best is magnet arm and pitch_forearm
 library(Rmisc)
 library(ggplot2)
+set.seed(19791108)
+library(caret)
+
+classeIndex <- which(names(training.cleaned) == "classe")
+
+correlations <- cor(training.subSetTrain[, -classeIndex], as.numeric(training.subSetTrain$classe))
+bestCorrelations <- subset(as.data.frame(as.table(correlations)), abs(Freq)>0.3)
+bestCorrelations
 
 p1 <- ggplot(training.subSetTrain, aes(classe,pitch_forearm)) + 
   geom_boxplot(aes(fill=classe))
@@ -552,5 +570,43 @@ p2 <- ggplot(training.subSetTrain, aes(classe, magnet_arm_x)) +
 multiplot(p1,p2,cols=2)
 
 #for model selection PCA and random forests 
+
+#determine highly correlated ones
+library(corrplot)
+correlationMatrix <- cor(training.subSetTrain[, -classeIndex])
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.9, exact=TRUE)
+excludeColumns <- c(highlyCorrelated, classeIndex)
+corrplot(correlationMatrix, method="color", type="lower", order="hclust", tl.cex=0.70, tl.col="black", tl.srt = 45, diag = FALSE)
+
+#PCA preprocessing 
+pcaPreProcess.all <- preProcess(training.subSetTrain[, -classeIndex], method = "pca", thresh = 0.99)
+training.subSetTrain.pca.all <- predict(pcaPreProcess.all, training.subSetTrain[, -classeIndex])
+training.subSetTest.pca.all <- predict(pcaPreProcess.all, training.subSetTest[, -classeIndex])
+testing.pca.all <- predict(pcaPreProcess.all, testing.cleaned[, -classeIndex])
+
+library(randomForest)
+
+tree <- 50  #according to the error rate I have selected
+
+start <- proc.time()
+rfMod.cleaned <- randomForest(
+  x=training.subSetTrain[, -classeIndex], 
+  y=training.subSetTrain$classe,
+  xtest=training.subSetTest[, -classeIndex], 
+  ytest=training.subSetTest$classe, 
+  ntree=ntree,
+  keep.forest=TRUE,
+  proximity=TRUE) #do.trace=TRUE
+proc.time() - start
+
+#model 
+rfMod.pca.all
+rfMod.pca.all.training.acc <- round(1-sum(rfMod.pca.all$confusion[, 'class.error']),3)
+paste0("Accuracy on training: ",rfMod.pca.all.training.acc)
+rfMod.pca.all.testing.acc <- round(1-sum(rfMod.pca.all$test$confusion[, 'class.error']),3)
+paste0("Accuracy on testing: ",rfMod.pca.all.testing.acc)
+
+#Conclusion 
+My PCA did not give positive result 
 
 
