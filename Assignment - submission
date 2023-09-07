@@ -610,3 +610,4 @@ paste0("Accuracy on testing: ",rfMod.pca.all.testing.acc)
 My PCA did not give positive result 
 
 
+
