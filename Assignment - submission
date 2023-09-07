@@ -538,7 +538,7 @@ dim(training)
 6             -300              800              884          6
 > 
 
-#I removed all the NAs 
+#I removed all the NAs because we need to clean the data little bit. 
 #for correlation best is magnet arm and pitch_forearm
 library(Rmisc)
 library(ggplot2)
